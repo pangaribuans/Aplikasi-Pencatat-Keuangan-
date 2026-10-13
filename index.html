@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pencatat Keuangan</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:20px;background:linear-gradient(135deg, #064e3b 0%, #3b0764 50%, #581c87 100%);color:#f3f4f6;font-family:Inter,Arial,sans-serif;min-height:100vh}
+main{max-width:760px;margin:auto}
+.card{background:#111827;padding:24px;border:1px solid #7e22ce;border-radius:18px;margin-bottom:18px;box-shadow:0 4px 15px rgba(0, 0, 0, 0.3)}
+h1{font-size:28px;margin:0 0 6px;color:#f3e8ff}
+h2{font-size:19px;color:#f3e8ff}
+.sub{color:#d1d5db;font-size:14px;line-height:1.5;margin-bottom:16px}
+label{display:block;font-weight:600;font-size:14px;margin:14px 0 7px;color:#e9d5ff}
+input,select{width:100%;padding:12px;border:1px solid #7e22ce;border-radius:10px;font-size:15px;background:#1f2937;color:#ffffff;outline:none}
+input::placeholder, select::placeholder{color:#9ca3af}
+input:focus,select:focus{border-color:#c084fc;box-shadow:0 0 0 2px rgba(192, 132, 252, 0.3)}
+button{padding:12px 16px;border:0;border-radius:10px;background:#9333ea;color:white;font-weight:600;cursor:pointer}
+button:hover{filter:brightness(1.1)}
+.btn-success{background:#059669}
+.btn-danger{background:#dc2626}
+.btn-secondary{background:#4b5563}
+.btn-warning{background:#d97706}
+.submit{width:100%;margin-top:18px}
+.ticker{overflow:hidden;background:#022c22;color:#e9d5ff;padding:12px 0;border-radius:12px;margin-bottom:20px;border:1px solid #059669}
+.track{display:flex;width:max-content;animation:jalan 15s linear infinite}
+.track span{white-space:nowrap;padding:0 28px;font-size:14px;font-weight:500}
+.ticker:hover .track{animation-play-state:paused}
+@keyframes jalan{to{transform:translateX(-50%)}}
+.summary{background:#3b0764;border-radius:12px;padding:16px;margin:18px 0;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;border:1px solid #7e22ce}
+.summary strong{font-size:20px;color:#c084fc}
+.history-controls{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
+.daily{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.1)}
+.note{font-size:12px;color:#9ca3af;line-height:1.5}
+.danger{display:none !important}
+.action-group{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.modal{display:none;position:fixed;z-index:100;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.8);align-items:center;justify-content:center;padding:15px}
+.modal-content{background:#111827;border:1px solid #7e22ce;padding:24px;border-radius:16px;max-width:500px;width:100%;max-height:85vh;overflow-y:auto;color:#f3f4f6}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.modal-header h3{margin:0;color:#e9d5ff}
+.close-modal{background:none;color:#9ca3af;font-size:22px;padding:0;cursor:pointer}
+.item-kelola{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid rgba(255,255,255,0.1);border-radius:8px;margin-bottom:8px;font-size:14px;background:#1f2937}
+@media(max-width:520px){body{padding:12px}.card{padding:18px}.history-controls{grid-template-columns:1fr}.history-controls button{width:100%}}
+</style>
+</head>
+<body>
+<main>
+<section class="card">
+<h1>Catatan Pengeluaran</h1>
+<p class="sub">Catat dan pantau pengeluaran harianmu dengan cepat dan ringan.</p>
+
+<div class="ticker">
+<div class="track" id="track">
+<span>Belum ada pengeluaran.</span>
+</div>
+</div>
+
+<form id="form">
+<label for="tanggal">Tanggal</label>
+<input type="date" id="tanggal" required>
+
+<label for="nama">Nama Pengeluaran</label>
+<input type="text" id="nama" placeholder="Contoh: Makan Siang" maxlength="120" required>
+
+<label for="biaya">Biaya Pengeluaran (Rp)</label>
+<input type="text" id="biaya" placeholder="Contoh: 25.000" required>
+
+<button class="submit btn-success" type="submit">Simpan Pengeluaran</button>
+</form>
+</section>
+
+<section class="card">
+<h2>Riwayat Pengeluaran Harian</h2>
+<p class="sub">Pilih tanggal untuk membuka rincian pengeluaran pada tab baru.</p>
+
+<div class="history-controls">
+<div>
+<label for="pilihTanggal">Pilih tanggal riwayat</label>
+<select id="pilihTanggal">
+<option value="">Belum ada riwayat</option>
+</select>
+</div>
+<button id="bukaRiwayat" type="button">Buka Rincian</button>
+</div>
+
+<div class="summary">
+<span>Total seluruh pengeluaran</span>
+<strong id="total">Rp0</strong>
+</div>
+
+<div id="ringkasan">Belum ada pengeluaran.</div>
+
+<div class="action-group">
+<button id="btnHapusHariIni" class="btn-danger" type="button">Hapus Data Tanggal Dipilih</button>
+<button id="btnPilihHapus" class="btn-secondary" type="button">Kelola / Edit / Hapus Data</button>
+</div>
+
+<p class="note" style="margin-top:14px;">Data tersimpan aman di browser perangkat ini.</p>
+<button id="hapus" class="danger" type="button">Hapus Semua Data</button>
+</section>
+</main>
+
+<!-- Modal Kelola, Edit, dan Hapus Data -->
+<div id="modalKelola" class="modal">
+<div class="modal-content">
+<div class="modal-header">
+<h3 id="modalTitle">Kelola Data Pengeluaran</h3>
+<button class="close-modal" id="tutupModal">&times;</button>
+</div>
+<div id="modalBody">
+  <p class="sub">Pilih item catatan pengeluaran yang ingin dihapus:</p>
+  <div id="daftarItemModal" style="margin-bottom:15px; max-height: 250px; overflow-y: auto;"></div>
+  <div style="display:flex; gap:10px; justify-content:flex-end;">
+    <button type="button" class="btn-secondary" id="batalModal">Tutup</button>
+    <button type="button" class="btn-danger" id="konfirmasiHapusPilihan">Hapus Item Terpilih</button>
+  </div>
+</div>
+</div>
+</div>
+
+<script>
+const KEY = "catatan_keuangan_v1";
+const el = id => document.getElementById(id);
+
+function hariIni(){
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+el("tanggal").value = hariIni();
+
+el("biaya").addEventListener("input", function(e){
+  let val = this.value.replace(/[^0-9]/g, "");
+  if(val){
+    val = Number(val).toLocaleString("id-ID");
+  }
+  this.value = val;
+});
+
+function ambilData(){
+  try {
+    const data = JSON.parse(localStorage.getItem(KEY) || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function rupiah(n){
+  return new Intl.NumberFormat("id-ID",{
+    style:"currency",currency:"IDR",maximumFractionDigits:0
+  }).format(n);
+}
+
+function formatTanggal(t){
+  if(!t) return "";
+  const [y,m,d] = t.split("-").map(Number);
+  const dateObj = new Date(y,m-1,d);
+  return dateObj.toLocaleDateString("id-ID",{
+    weekday:"long",day:"2-digit",month:"long",year:"numeric"
+  });
+}
+
+function aman(s){
+  return String(s).replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[c]);
+}
+
+function render(){
+  const data = ambilData().sort((a,b)=>b.waktu-a.waktu);
+
+  const terbaru = data.slice(0,5);
+  const isi = terbaru.length
+    ? terbaru.map(x=>`<span>● ${aman(formatTanggal(x.tanggal))} — ${aman(x.nama)}: ${rupiah(x.biaya)}</span>`).join("")
+    : "<span>Belum ada pengeluaran yang dicatat.</span>";
+
+  el("track").innerHTML = isi + (terbaru.length ? isi : "");
+
+  el("total").textContent = rupiah(
+    data.reduce((s,x)=>s+Number(x.biaya),0)
+  );
+
+  const rekap = {};
+  data.forEach(x=>{
+    if(!rekap[x.tanggal]) rekap[x.tanggal]={total:0,jumlah:0};
+    rekap[x.tanggal].total += Number(x.biaya);
+    rekap[x.tanggal].jumlah++;
+  });
+
+  const tanggal = Object.keys(rekap).sort((a,b)=>b.localeCompare(a));
+  const select = el("pilihTanggal");
+  const sebelumnya = select.value;
+  select.innerHTML = "";
+
+  if(!tanggal.length){
+    select.innerHTML = '<option value="">Belum ada riwayat</option>';
+    el("ringkasan").textContent = "Belum ada pengeluaran.";
+    return;
+  }
+
+  tanggal.forEach(t=>{
+    const option = document.createElement("option");
+    option.value = t;
+    option.textContent = formatTanggal(t)+" — "+rupiah(rekap[t].total);
+    select.appendChild(option);
+  });
+
+  if(tanggal.includes(sebelumnya)) select.value = sebelumnya;
+
+  el("ringkasan").innerHTML = tanggal.map(t=>
+    `<div class="daily">
+      <span>${aman(formatTanggal(t))}
+      <small style="color:#d1d5db;">(${rekap[t].jumlah} transaksi)</small></span>
+      <strong style="color:#e9d5ff;">${rupiah(rekap[t].total)}</strong>
+    </div>`
+  ).join("");
+}
+
+el("form").addEventListener("submit",function(e){
+  e.preventDefault();
+
+  const tanggal = el("tanggal").value;
+  const nama = el("nama").value.trim();
+  const biaya = Number(el("biaya").value.replace(/\./g, ""));
+
+  if(!tanggal || !nama || !Number.isFinite(biaya) || biaya<=0){
+    alert("Isi semua kolom dengan benar.");
+    return;
+  }
+
+  const data = ambilData();
+  data.push({
+    tanggal: tanggal,
+    nama: nama,
+    biaya: biaya,
+    waktu: Date.now()
+  });
+
+  try {
+    localStorage.setItem(KEY,JSON.stringify(data));
+  } catch(err) {
+    alert("Data gagal disimpan. Periksa ruang penyimpanan browser.");
+    return;
+  }
+
+  el("nama").value = "";
+  el("biaya").value = "";
+  el("tanggal").value = hariIni();
+  render();
+});
+
+el("bukaRiwayat").addEventListener("click",function(){
+  const tanggal = el("pilihTanggal").value;
+
+  if(!tanggal){
+    alert("Belum ada riwayat untuk dibuka.");
+    return;
+  }
+
+  const data = ambilData()
+    .filter(x=>x.tanggal===tanggal)
+    .sort((a,b)=>a.waktu-b.waktu);
+
+  const total = data.reduce((s,x)=>s+Number(x.biaya),0);
+
+  const baris = data.map((x,i)=>
+    `<tr><td>${i+1}</td>
+    <td>${aman(x.nama)}</td>
+    <td class="uang">${rupiah(x.biaya)}</td></tr>`
+  ).join("");
+
+  const halaman = `<!DOCTYPE html>
+  <html lang="id"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Riwayat Pengeluaran</title>
+  <style>
+  body{font-family:Inter,Arial,sans-serif;max-width:800px;margin:25px auto;padding:0 15px;color:#1f2937}
+  h1{font-size:26px;color:#581c87}
+  .total{background:#f3e8ff;padding:18px;border-radius:10px;margin:20px 0;border:1px solid #d8b4fe}
+  .total strong{font-size:24px;color:#7e22ce}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:12px 8px;border-bottom:1px solid #e5e7eb;text-align:left}
+  th{background:#faf5ff;color:#581c87}
+  .uang{text-align:right;white-space:nowrap}
+  button{background:#9333ea;color:white;border:0;padding:11px 15px;border-radius:8px;cursor:pointer}
+  @media print{button{display:none}}
+  </style></head><body>
+  <h1>Riwayat Pengeluaran</h1>
+  <p>Tanggal: ${aman(formatTanggal(tanggal))}</p>
+  <div class="total">Total pengeluaran:<br><strong>${rupiah(total)}</strong><br>
+  ${data.length} transaksi</div>
+  <table><thead><tr><th>No.</th><th>Nama Pengeluaran</th><th style="text-align:right">Biaya</th></tr></thead>
+  <tbody>${baris}</tbody></table>
+  <p><button onclick="window.print()">Cetak / Simpan PDF</button></p>
+  </body></html>`;
+
+  const tab = window.open("", "Riwayat Pengeluaran");
+  if(!tab){
+    alert("Tab baru diblokir. Izinkan pop-up untuk halaman ini lalu coba lagi.");
+    return;
+  }
+  tab.document.open();
+  tab.document.write(halaman);
+  tab.document.close();
+  tab.focus();
+});
+
+el("btnHapusHariIni").addEventListener("click", function(){
+  const tanggalPilih = el("pilihTanggal").value;
+
+  if(!tanggalPilih){
+    alert("Silakan pilih tanggal riwayat terlebih dahulu.");
+    return;
+  }
+
+  const data = ambilData();
+  const sisaData = data.filter(x => x.tanggal !== tanggalPilih);
+
+  if(confirm(`Yakin ingin menghapus seluruh catatan pengeluaran pada tanggal ${formatTanggal(tanggalPilih)}?`)){
+    localStorage.setItem(KEY, JSON.stringify(sisaData));
+    render();
+  }
+});
+
+// Modal Kelola, Edit, dan Hapus Data
+const modal = el("modalKelola");
+el("btnPilihHapus").addEventListener("click", function(){
+  bukaMenuKelola();
+});
+
+function bukaMenuKelola(){
+  el("modalTitle").textContent = "Kelola Data Pengeluaran";
+  const data = ambilData().sort((a,b)=>b.waktu-a.waktu);
+  const container = el("modalBody");
+  
+  if(!data.length){
+    alert("Belum ada data untuk dikelola.");
+    return;
+  }
+
+  container.innerHTML = `
+    <p class="sub">Pilih item untuk dihapus atau klik tombol Edit untuk mengubah isinya:</p>
+    <div style="margin-bottom:15px; max-height: 280px; overflow-y: auto;">
+      ${data.map((x) => `
+        <div class="item-kelola">
+          <div style="flex:1;">
+            <strong>${aman(x.nama)}</strong> (${rupiah(x.biaya)})<br>
+            <small style="color:#9ca3af;">${formatTanggal(x.tanggal)}</small>
+          </div>
+          <button type="button" class="btn-warning" onclick="bukaFormEdit(${x.waktu})" style="padding:6px 10px; font-size:12px;">Edit</button>
+          <input type="checkbox" value="${x.waktu}" class="pilih-hapus-cb" style="width:auto; cursor:pointer;">
+        </div>
+      `).join("")}
+    </div>
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button type="button" class="btn-secondary" id="batalModal">Tutup</button>
+      <button type="button" class="btn-danger" id="konfirmasiHapusPilihan">Hapus Item Terpilih</button>
+    </div>
+  `;
+
+  el("batalModal").addEventListener("click", tutupModalFungsi);
+  el("konfirmasiHapusPilihan").onclick = function(){
+    const checkboxes = document.querySelectorAll(".pilih-hapus-cb:checked");
+    if(!checkboxes.length){
+      alert("Pilih setidaknya satu item yang ingin dihapus melalui centang di sebelah kanan.");
+      return;
+    }
+
+    if(confirm(`Yakin ingin menghapus ${checkboxes.length} item yang dipilih?`)){
+      const waktuHapus = new Set(Array.from(checkboxes).map(cb => Number(cb.value)));
+      const dataAktif = ambilData().filter(x => !waktuHapus.has(x.waktu));
+      
+      localStorage.setItem(KEY, JSON.stringify(dataAktif));
+      tutupModalFungsi();
+      render();
+    }
+  };
+
+  modal.style.display = "flex";
+}
+
+// Fungsi Form Edit Data
+window.bukaFormEdit = function(waktuItem){
+  const data = ambilData();
+  const item = data.find(x => x.waktu === waktuItem);
+  if(!item) return;
+
+  el("modalTitle").textContent = "Edit Data Pengeluaran";
+  const container = el("modalBody");
+
+  container.innerHTML = `
+    <form id="formEditItem">
+      <label>Tanggal</label>
+      <input type="date" id="editTanggal" value="${item.tanggal}" required style="margin-bottom:10px;">
+
+      <label>Nama Pengeluaran</label>
+      <input type="text" id="editNama" value="${aman(item.nama)}" maxlength="120" required style="margin-bottom:10px;">
+
+      <label>Biaya Pengeluaran (Rp)</label>
+      <input type="text" id="editBiaya" value="${Number(item.biaya).toLocaleString("id-ID")}" required style="margin-bottom:15px;">
+
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="btn-secondary" onclick="bukaMenuKelola()">Kembali</button>
+        <button type="submit" class="btn-success">Simpan Perubahan</button>
+      </div>
+    </form>
+  `;
+
+  // Format titik otomatis pada input edit biaya
+  el("editBiaya").addEventListener("input", function(){
+    let val = this.value.replace(/[^0-9]/g, "");
+    if(val){
+      val = Number(val).toLocaleString("id-ID");
+    }
+    this.value = val;
+  });
+
+  el("formEditItem").addEventListener("submit", function(e){
+    e.preventDefault();
+    const tBaru = el("editTanggal").value;
+    const nBaru = el("editNama").value.trim();
+    const bBaru = Number(el("editBiaya").value.replace(/\./g, ""));
+
+    if(!tBaru || !nBaru || !Number.isFinite(bBaru) || bBaru<=0){
+      alert("Isi kolom dengan benar.");
+      return;
+    }
+
+    item.tanggal = tBaru;
+    item.nama = nBaru;
+    item.biaya = bBaru;
+
+    localStorage.setItem(KEY, JSON.stringify(data));
+    tutupModalFungsi();
+    render();
+    alert("Data berhasil diperbarui!");
+  });
+};
+
+function tutupModalFungsi(){
+  modal.style.display = "none";
+}
+
+el("tutupModal").addEventListener("click", tutupModalFungsi);
+
+render();
+</script>
+</body>
+</html>
